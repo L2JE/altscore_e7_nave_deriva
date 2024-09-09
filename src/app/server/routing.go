@@ -14,4 +14,5 @@ func SetupRoutes(shipService *endpoints.ShipService) {
 	http.Handle("GET /status", mw.Apply(shipService.GetShipStatus))
 	http.Handle("GET /repair-bay", mw.Apply(shipService.GetFailingSystem))
 	http.Handle("POST /teapot", mw.Apply(shipService.ImTeapotHealthcheck))
+	http.Handle("GET /phase-change-diagram", mw.Apply(shipService.GetPhaseChangeDiagramValues))
 }

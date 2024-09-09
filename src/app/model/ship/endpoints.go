@@ -2,9 +2,12 @@ package ship
 
 import (
 	mapUtils "altscore_e7_nave_deriva/utils/common"
+	customJson "altscore_e7_nave_deriva/utils/middleware"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"strconv"
 )
 
 func InitShipService(respondFullHTML bool) *ShipService {
@@ -16,13 +19,28 @@ func InitShipService(respondFullHTML bool) *ShipService {
 		"deflector_shield": "SHLD-05",
 	}
 
-	return &ShipService{systems, mapUtils.PickRandomKey(systems), respondFullHTML}
+	return &ShipService{
+		systems,
+		mapUtils.PickRandomKey(systems),
+		respondFullHTML,
+		NewHidraulicSystem(&PhaseChangeLines{
+			LiquidX1: 0.00105,
+			LiquidY1: 0.05,
+			LiquidX2: 0.0035,
+			LiquidY2: 10,
+			VaporX1:  0.0035,
+			VaporY1:  10,
+			VaporX2:  30,
+			VaporY2:  0.05,
+		}),
+	}
 }
 
 type ShipService struct {
 	systems         map[string]string
 	damagedSystem   string
 	respondFullHTML bool
+	hidraulicSystem *HidraulicSystem
 }
 
 type ShipStatus struct {
@@ -61,4 +79,20 @@ func (ship *ShipService) GetFailingSystem(w http.ResponseWriter, r *http.Request
 
 func (ship *ShipService) ImTeapotHealthcheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTeapot)
+}
+
+func (ship *ShipService) GetPhaseChangeDiagramValues(w http.ResponseWriter, r *http.Request) {
+	const PRESSURE_PARAM = "pressure"
+	const JSON_FLOATS_PRECISSION = 5
+	pressureStr := r.URL.Query().Get(PRESSURE_PARAM)
+	pressure, err := strconv.ParseFloat(pressureStr, 64)
+
+	if err != nil {
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	customJson.EncodeRoundingFloats(w, ship.hidraulicSystem.GetPhaseChangeValuesForPressure(pressure), JSON_FLOATS_PRECISSION)
 }
